@@ -1,10 +1,12 @@
+import AppLayout from './layout/AppLayout';
+
 function App() {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <h1 className="text-2xl font-semibold text-indigo-600">
-        Tailwind is working
-      </h1>
-    </div>
+    <AppLayout>
+      <div className="text-slate-700">
+        Main content goes here
+      </div>
+    </AppLayout>
   );
 }
 
