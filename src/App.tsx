@@ -1,10 +1,10 @@
-import AppLayout from './layout/AppLayout';
+import AppLayout from './layouts/AppLayout';
 
 function App() {
   return (
     <AppLayout>
       <div className="text-slate-700">
-        Main content goes here
+        Main Content
       </div>
     </AppLayout>
   );

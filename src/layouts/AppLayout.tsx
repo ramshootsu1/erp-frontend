@@ -14,7 +14,7 @@ function AppLayout({ children }: AppLayoutProps) {
       {/* Main area */}
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-64 border-r border-slate-200 bg-white">
+        <aside className="w-64 bg-white border-r border-slate-200">
           <Sidebar />
         </aside>
 

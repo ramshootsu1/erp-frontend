@@ -5,7 +5,7 @@ function Topbar() {
         ERP
       </div>
 
-      <div className="text-sm font-medium text-slate-700">
+      <div className="text-sm text-slate-600">
         Dashboard
       </div>
     </header>
