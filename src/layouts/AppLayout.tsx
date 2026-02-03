@@ -1,26 +1,22 @@
+import { Outlet } from 'react-router-dom';
 import Topbar from '../components/Topbar';
 import Sidebar from '../components/Sidebar';
 
-type AppLayoutProps = {
-  children: React.ReactNode;
-};
-
-function AppLayout({ children }: AppLayoutProps) {
+function AppLayout() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Topbar */}
       <Topbar />
 
-      {/* Main area */}
       <div className="flex">
         {/* Sidebar */}
         <aside className="w-64 bg-white border-r border-slate-200">
           <Sidebar />
         </aside>
 
-        {/* Content */}
+        {/* Page content */}
         <main className="flex-1 p-6">
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>
