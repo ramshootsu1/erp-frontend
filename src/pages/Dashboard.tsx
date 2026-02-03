@@ -6,7 +6,7 @@ function Dashboard() {
       </h1>
 
       <p className="mt-2 text-slate-600">
-        Main content goes here
+        Chai Bna do
       </p>
     </div>
   );
