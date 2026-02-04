@@ -1,12 +1,20 @@
-function Topbar() {
-  return (
-    <header className="h-14 flex items-center justify-between px-6 border-b border-slate-200 bg-white">
-      <div className="font-semibold text-indigo-600">
-        Hisaab Kitaab ERP - Compliance
-      </div>
+type Props = {
+  onMenuClick?: () => void;
+};
 
-      <div className="text-sm text-slate-600">
-        Dashboard
+function Topbar({ onMenuClick }: Props) {
+  return (
+    <header className="flex h-14 items-center gap-3 border-b border-slate-200 bg-white px-4">
+      {/* Hamburger (mobile only) */}
+      <button
+        onClick={onMenuClick}
+        className="rounded-md p-2 text-slate-700 hover:bg-slate-100 lg:hidden"
+      >
+        ☰
+      </button>
+
+      <div className="font-semibold text-slate-800">
+        ERP
       </div>
     </header>
   );

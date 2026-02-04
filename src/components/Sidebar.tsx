@@ -1,8 +1,12 @@
 import { NavLink } from 'react-router-dom';
 
-function Sidebar() {
+type Props = {
+  onNavigate?: () => void;
+};
+
+function Sidebar({ onNavigate }: Props) {
   const base =
-    'block rounded-md px-3 py-2 text-sm';
+    'block rounded-md px-3 py-2 text-base';
 
   const inactive =
     'text-slate-700 hover:bg-slate-100';
@@ -11,14 +15,15 @@ function Sidebar() {
     'bg-indigo-50 text-indigo-700 font-medium';
 
   return (
-    <nav className="p-6">
-      <div className="mb-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <nav className="min-h-screen p-4">
+      <div className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
         Menu
       </div>
 
       <div className="space-y-1">
         <NavLink
           to="/dashboard"
+          onClick={onNavigate}
           className={({ isActive }) =>
             `${base} ${isActive ? active : inactive}`
           }
@@ -28,6 +33,7 @@ function Sidebar() {
 
         <NavLink
           to="/customers"
+          onClick={onNavigate}
           className={({ isActive }) =>
             `${base} ${isActive ? active : inactive}`
           }
@@ -37,6 +43,7 @@ function Sidebar() {
 
         <NavLink
           to="/invoices"
+          onClick={onNavigate}
           className={({ isActive }) =>
             `${base} ${isActive ? active : inactive}`
           }
