@@ -204,12 +204,13 @@ function Customers() {
               </div>
 
              <button
-  onClick={() => handleDeleteCustomer(c.id)}
-  className="flex items-center justify-center rounded-md p-2 text-red-600 hover:bg-red-50"
-  aria-label="Delete customer"
+                 onClick={() => handleDeleteCustomer(c.id)}
+                    className="flex items-center justify-center rounded-md p-2 text-red-600 hover:bg-red-50"
+                    aria-label="Delete customer"
 >
-  <TrashIcon className="h-5 w-5" />
-</button>
+                <TrashIcon className="h-5 w-5" />
+            </button>
+            
             </li>
           ))}
         </ul>
