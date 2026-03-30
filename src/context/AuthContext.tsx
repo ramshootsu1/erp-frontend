@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { authApi } from '../api/auth';
 
 export interface Membership {
   tenantId: string;
@@ -60,19 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:3000/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Login failed. Please check your credentials.');
-      }
-
-      const data = await response.json();
+      const data = await authApi.login(email, password);
 
       const userData: User = {
         userId: data.userId,
@@ -103,19 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:3000/auth/select-tenant', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, tenantId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to select tenant');
-      }
-
-      const data = await response.json();
+      const data = await authApi.selectTenant(userId, tenantId);
 
       const tenantData = {
         tenantId,
