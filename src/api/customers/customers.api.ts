@@ -3,9 +3,12 @@ import { http } from '../http';
 export type Customer = {
   id: string;
   name: string;
+  code?: string | null;
   email?: string | null;
   phone?: string | null;
+  notes?: string | null;
   createdAt: string;
+  updatedAt?: string;
 };
 
 export type CreateCustomerInput = {
@@ -40,4 +43,11 @@ export async function deleteCustomer(id: string): Promise<void> {
   await http(`/customers/${id}`, {
     method: 'DELETE',
   });
+}
+
+/**
+ * Get a single customer profile by id
+ */
+export async function getCustomerById(id: string): Promise<Customer> {
+  return http<Customer>(`/customers/${id}`);
 }

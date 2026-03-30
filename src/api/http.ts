@@ -5,10 +5,18 @@ export async function http<T>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
+  const token = localStorage.getItem('authToken');
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     ...options,
   });
 
