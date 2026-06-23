@@ -11,10 +11,12 @@ import { queryKeys } from '../../../lib/query/queryKeys';
 import { AddressForm } from '../components/AddressForm';
 import { CustomerAddressList } from '../components/CustomerAddressList';
 import { CustomerContactList } from '../components/CustomerContactList';
+import { CustomerForm } from '../components/CustomerForm';
 import { CustomerSummaryCard } from '../components/CustomerSummaryCard';
 import {
   createCustomerAddress,
   deleteCustomerAddress,
+  updateCustomer,
 } from '../api/customer.api';
 import { useCustomer } from '../hooks/useCustomer';
 import { useCustomerAddresses } from '../hooks/useCustomerAddresses';
@@ -22,6 +24,8 @@ import { useCustomerContacts } from '../hooks/useCustomerContacts';
 import type {
   CustomerAddress,
   CustomerAddressInput,
+  CreateCustomerInput,
+  UpdateCustomerInput,
 } from '../types/customer.types';
 
 type TabKey = 'overview' | 'addresses' | 'contacts';
@@ -36,6 +40,8 @@ type AddressDialogState =
   | { mode: 'add'; address: null }
   | { mode: 'edit'; address: CustomerAddress };
 
+type CustomerDialogState = { mode: 'edit' } | null;
+
 export function CustomerProfilePage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -44,6 +50,7 @@ export function CustomerProfilePage() {
     return initial === 'addresses' || initial === 'contacts' ? initial : 'overview';
   });
   const [addressDialog, setAddressDialog] = useState<AddressDialogState | null>(null);
+  const [customerDialog, setCustomerDialog] = useState<CustomerDialogState>(null);
 
   const queryClient = useQueryClient();
 
@@ -92,6 +99,26 @@ export function CustomerProfilePage() {
     },
     onSuccess: async () => {
       await invalidateAddressState();
+    },
+  });
+
+  const saveCustomerMutation = useMutation({
+    mutationFn: async (values: CreateCustomerInput | UpdateCustomerInput) => {
+      if (!id) {
+        throw new Error('Customer id is missing');
+      }
+
+      return updateCustomer(id, values);
+    },
+    onSuccess: async () => {
+      if (!id) return;
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.customers.detail(id) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.customers.list() }),
+      ]);
+
+      setCustomerDialog(null);
     },
   });
 
@@ -224,6 +251,15 @@ export function CustomerProfilePage() {
       <PageHeader
         title={customerQuery.data.name}
         description={`Customer ID: ${customerQuery.data.id}`}
+        actions={
+          <button
+            type="button"
+            onClick={() => setCustomerDialog({ mode: 'edit' })}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+          >
+            Edit customer
+          </button>
+        }
       />
 
       <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -268,6 +304,29 @@ export function CustomerProfilePage() {
                   addressId: addressDialog.address?.id,
                   values,
                 });
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {customerDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+            <CustomerForm
+              mode="edit"
+              initialValues={{
+                name: customerQuery.data.name,
+                code: customerQuery.data.code ?? '',
+                email: customerQuery.data.email ?? '',
+                phone: customerQuery.data.phone ?? '',
+                notes: customerQuery.data.notes ?? '',
+              }}
+              isSubmitting={saveCustomerMutation.isPending}
+              error={saveCustomerMutation.error instanceof Error ? saveCustomerMutation.error.message : null}
+              onCancel={() => setCustomerDialog(null)}
+              onSubmit={(values) => {
+                saveCustomerMutation.mutate(values);
               }}
             />
           </div>

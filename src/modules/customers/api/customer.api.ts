@@ -5,6 +5,7 @@ import type {
   Customer,
   CustomerAddress,
   CustomerContact,
+  UpdateCustomerInput,
 } from '../types/customer.types';
 
 export async function getCustomers(): Promise<Customer[]> {
@@ -27,6 +28,16 @@ export async function createCustomer(
 export async function deleteCustomer(id: string): Promise<void> {
   await http(`/customers/${id}`, {
     method: 'DELETE',
+  });
+}
+
+export async function updateCustomer(
+  id: string,
+  input: UpdateCustomerInput,
+): Promise<Customer> {
+  return http<Customer>(`/customers/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
   });
 }
 

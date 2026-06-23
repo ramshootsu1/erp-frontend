@@ -53,6 +53,8 @@ export type CreateCustomerInput = {
   notes?: string;
 };
 
+export type UpdateCustomerInput = Partial<CreateCustomerInput>;
+
 export type CustomerAddressInput = {
   label?: string;
   line1: string;

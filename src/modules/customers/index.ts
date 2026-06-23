@@ -3,6 +3,7 @@ export * from './components/AddressForm';
 export * from './components/CustomerAddressList';
 export * from './components/CustomerContactList';
 export * from './components/CustomerHeader';
+export * from './components/CustomerForm';
 export * from './components/CustomerSummaryCard';
 export * from './components/CustomerTable';
 export * from './hooks/useCustomer';

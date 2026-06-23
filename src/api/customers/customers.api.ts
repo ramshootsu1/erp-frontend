@@ -7,4 +7,5 @@ export {
   getCustomerAddresses,
   getCustomerContacts,
   getCustomers,
+  updateCustomer,
 } from '../../modules/customers/api/customer.api';
