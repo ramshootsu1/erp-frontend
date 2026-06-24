@@ -2,10 +2,21 @@ import { useEffect, useState } from 'react';
 import { StatusBadge } from '../../../components/ui';
 import type { CustomerAddressInput } from '../types/customer.types';
 
-type AddressFormValues = CustomerAddressInput;
+export type AddressFormValues = {
+  addressType: 'billing' | 'shipping' | 'both' | 'other';
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  isDefault: boolean;
+};
+
+export type AddressFormMode = 'create' | 'edit';
 
 type AddressFormProps = {
-  mode: 'add' | 'edit';
+  mode: AddressFormMode;
   initialValues?: Partial<AddressFormValues>;
   isSubmitting?: boolean;
   error?: string | null;
@@ -14,17 +25,48 @@ type AddressFormProps = {
 };
 
 const emptyValues: AddressFormValues = {
-  label: '',
-  line1: '',
-  line2: '',
+  addressType: 'other',
+  addressLine1: '',
+  addressLine2: '',
   city: '',
   state: '',
   postalCode: '',
   country: '',
-  isBilling: false,
-  isShipping: false,
   isDefault: false,
 };
+
+function toAddressFormValues(
+  initialValues?: Partial<AddressFormValues>,
+): AddressFormValues {
+  return {
+    ...emptyValues,
+    ...initialValues,
+  };
+}
+
+export function mapAddressFormValuesToInput(
+  values: AddressFormValues,
+): CustomerAddressInput {
+  return {
+    label:
+      values.addressType === 'billing'
+        ? 'Billing'
+        : values.addressType === 'shipping'
+          ? 'Shipping'
+          : values.addressType === 'both'
+            ? 'Billing / Shipping'
+            : undefined,
+    line1: values.addressLine1.trim(),
+    line2: values.addressLine2.trim() || undefined,
+    city: values.city.trim(),
+    state: values.state.trim() || undefined,
+    postalCode: values.postalCode.trim(),
+    country: values.country.trim(),
+    isBilling: values.addressType === 'billing' || values.addressType === 'both',
+    isShipping: values.addressType === 'shipping' || values.addressType === 'both',
+    isDefault: Boolean(values.isDefault),
+  };
+}
 
 export function AddressForm({
   mode,
@@ -34,16 +76,12 @@ export function AddressForm({
   onSubmit,
   onCancel,
 }: AddressFormProps) {
-  const [values, setValues] = useState<AddressFormValues>({
-    ...emptyValues,
-    ...initialValues,
-  });
+  const [values, setValues] = useState<AddressFormValues>(
+    toAddressFormValues(initialValues),
+  );
 
   useEffect(() => {
-    setValues({
-      ...emptyValues,
-      ...initialValues,
-    });
+    setValues(toAddressFormValues(initialValues));
   }, [initialValues]);
 
   const setField = <K extends keyof AddressFormValues>(
@@ -61,16 +99,13 @@ export function AddressForm({
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit({
-          label: values.label?.trim() || undefined,
-          line1: values.line1.trim(),
-          line2: values.line2?.trim() || undefined,
+          ...values,
+          addressLine1: values.addressLine1.trim(),
+          addressLine2: values.addressLine2.trim(),
           city: values.city.trim(),
-          state: values.state?.trim() || undefined,
+          state: values.state.trim(),
           postalCode: values.postalCode.trim(),
           country: values.country.trim(),
-          isBilling: Boolean(values.isBilling),
-          isShipping: Boolean(values.isShipping),
-          isDefault: Boolean(values.isDefault),
         });
       }}
       className="space-y-4"
@@ -78,42 +113,50 @@ export function AddressForm({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">
-            {mode === 'add' ? 'Add address' : 'Edit address'}
+            {mode === 'create' ? 'Add address' : 'Edit address'}
           </h3>
           <p className="mt-1 text-sm text-slate-600">
-            Keep the customer address record tidy and ready for ERP workflows.
+            Keep customer address records ready for billing and delivery workflows.
           </p>
         </div>
-        <StatusBadge variant="info">{mode === 'add' ? 'New' : 'Editing'}</StatusBadge>
+        <StatusBadge variant="info">
+          {mode === 'create' ? 'New' : 'Editing'}
+        </StatusBadge>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-slate-700">Label</label>
-          <input
-            value={values.label ?? ''}
-            onChange={(e) => setField('label', e.target.value)}
+          <label className="block text-sm font-medium text-slate-700">Address type</label>
+          <select
+            value={values.addressType}
+            onChange={(e) =>
+              setField('addressType', e.target.value as AddressFormValues['addressType'])
+            }
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-            placeholder="Head Office"
-          />
+          >
+            <option value="other">General</option>
+            <option value="billing">Billing</option>
+            <option value="shipping">Shipping</option>
+            <option value="both">Billing + Shipping</option>
+          </select>
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-slate-700">Line 1</label>
+          <label className="block text-sm font-medium text-slate-700">Address line 1</label>
           <input
             required
-            value={values.line1}
-            onChange={(e) => setField('line1', e.target.value)}
+            value={values.addressLine1}
+            onChange={(e) => setField('addressLine1', e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
             placeholder="Street address"
           />
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-slate-700">Line 2</label>
+          <label className="block text-sm font-medium text-slate-700">Address line 2</label>
           <input
-            value={values.line2 ?? ''}
-            onChange={(e) => setField('line2', e.target.value)}
+            value={values.addressLine2}
+            onChange={(e) => setField('addressLine2', e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
             placeholder="Apartment, suite, floor"
           />
@@ -132,7 +175,7 @@ export function AddressForm({
         <div>
           <label className="block text-sm font-medium text-slate-700">State</label>
           <input
-            value={values.state ?? ''}
+            value={values.state}
             onChange={(e) => setField('state', e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
           />
@@ -159,35 +202,15 @@ export function AddressForm({
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-3">
-        <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={Boolean(values.isBilling)}
-            onChange={(e) => setField('isBilling', e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-          />
-          Billing address
-        </label>
-        <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={Boolean(values.isShipping)}
-            onChange={(e) => setField('isShipping', e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-          />
-          Shipping address
-        </label>
-        <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={Boolean(values.isDefault)}
-            onChange={(e) => setField('isDefault', e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-          />
-          Default address
-        </label>
-      </div>
+      <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={Boolean(values.isDefault)}
+          onChange={(e) => setField('isDefault', e.target.checked)}
+          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+        />
+        Default address
+      </label>
 
       {error ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -209,7 +232,7 @@ export function AddressForm({
           disabled={isSubmitting}
           className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
         >
-          {isSubmitting ? 'Saving...' : mode === 'add' ? 'Add address' : 'Save changes'}
+          {isSubmitting ? 'Saving...' : mode === 'create' ? 'Add address' : 'Save changes'}
         </button>
       </div>
     </form>

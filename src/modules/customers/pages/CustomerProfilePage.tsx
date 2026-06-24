@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
@@ -8,25 +8,28 @@ import {
   PageHeader,
 } from '../../../components/ui';
 import { queryKeys } from '../../../lib/query/queryKeys';
-import { AddressForm } from '../components/AddressForm';
+import { updateCustomer } from '../api/customer.api';
+import { AddressForm, mapAddressFormValuesToInput } from '../components/AddressForm';
+import { ContactForm, mapContactFormValuesToInput, splitContactName } from '../components/ContactForm';
 import { CustomerAddressList } from '../components/CustomerAddressList';
 import { CustomerContactList } from '../components/CustomerContactList';
 import { CustomerForm } from '../components/CustomerForm';
 import { CustomerSummaryCard } from '../components/CustomerSummaryCard';
-import {
-  createCustomerAddress,
-  deleteCustomerAddress,
-  updateCustomer,
-} from '../api/customer.api';
+import { useCreateCustomerAddress } from '../hooks/useCreateCustomerAddress';
+import { useCreateCustomerContact } from '../hooks/useCreateCustomerContact';
 import { useCustomer } from '../hooks/useCustomer';
 import { useCustomerAddresses } from '../hooks/useCustomerAddresses';
 import { useCustomerContacts } from '../hooks/useCustomerContacts';
+import { useDeleteCustomerAddress } from '../hooks/useDeleteCustomerAddress';
+import { useDeleteCustomerContact } from '../hooks/useDeleteCustomerContact';
 import type {
   CustomerAddress,
-  CustomerAddressInput,
+  CustomerContact,
   CreateCustomerInput,
   UpdateCustomerInput,
 } from '../types/customer.types';
+import type { AddressFormValues } from '../components/AddressForm';
+import type { ContactFormValues } from '../components/ContactForm';
 
 type TabKey = 'overview' | 'addresses' | 'contacts';
 
@@ -37,10 +40,45 @@ const tabs: Array<{ key: TabKey; label: string }> = [
 ];
 
 type AddressDialogState =
-  | { mode: 'add'; address: null }
+  | { mode: 'create'; address: null }
   | { mode: 'edit'; address: CustomerAddress };
 
+type ContactDialogState =
+  | { mode: 'create'; contact: null }
+  | { mode: 'edit'; contact: CustomerContact };
+
 type CustomerDialogState = { mode: 'edit' } | null;
+
+function mapAddressToFormValues(address: CustomerAddress): Partial<AddressFormValues> {
+  const addressType = address.isBilling && address.isShipping
+    ? 'both'
+    : address.isBilling
+      ? 'billing'
+      : address.isShipping
+        ? 'shipping'
+        : 'other';
+
+  return {
+    addressType,
+    addressLine1: address.line1,
+    addressLine2: address.line2 ?? '',
+    city: address.city,
+    state: address.state ?? '',
+    postalCode: address.postalCode,
+    country: address.country,
+    isDefault: address.isDefault,
+  };
+}
+
+function mapContactToFormValues(contact: CustomerContact): Partial<ContactFormValues> {
+  return {
+    ...splitContactName(contact.name),
+    email: contact.email ?? '',
+    phone: contact.phone ?? '',
+    designation: contact.designation ?? '',
+    isPrimary: contact.isPrimary,
+  };
+}
 
 export function CustomerProfilePage() {
   const { id } = useParams();
@@ -50,7 +88,9 @@ export function CustomerProfilePage() {
     return initial === 'addresses' || initial === 'contacts' ? initial : 'overview';
   });
   const [addressDialog, setAddressDialog] = useState<AddressDialogState | null>(null);
+  const [contactDialog, setContactDialog] = useState<ContactDialogState | null>(null);
   const [customerDialog, setCustomerDialog] = useState<CustomerDialogState>(null);
+  const [flashMessage, setFlashMessage] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -58,49 +98,10 @@ export function CustomerProfilePage() {
   const addressesQuery = useCustomerAddresses(id);
   const contactsQuery = useCustomerContacts(id);
 
-  const invalidateAddressState = async () => {
-    if (!id) return;
-
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.customerAddresses.list(id) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.customers.detail(id) }),
-    ]);
-  };
-
-  const saveAddressMutation = useMutation({
-    mutationFn: async (payload: {
-      mode: AddressDialogState['mode'];
-      addressId?: string;
-      values: CustomerAddressInput;
-    }) => {
-      if (!id) {
-        throw new Error('Customer id is missing');
-      }
-
-      if (payload.mode === 'edit') {
-        if (!payload.addressId) {
-          throw new Error('Address id is missing');
-        }
-
-        await deleteCustomerAddress(payload.addressId);
-      }
-
-      return createCustomerAddress(id, payload.values);
-    },
-    onSuccess: async () => {
-      await invalidateAddressState();
-      setAddressDialog(null);
-    },
-  });
-
-  const deleteAddressMutation = useMutation({
-    mutationFn: async (addressId: string) => {
-      await deleteCustomerAddress(addressId);
-    },
-    onSuccess: async () => {
-      await invalidateAddressState();
-    },
-  });
+  const createAddressMutation = useCreateCustomerAddress(id);
+  const deleteAddressMutation = useDeleteCustomerAddress(id);
+  const createContactMutation = useCreateCustomerContact(id);
+  const deleteContactMutation = useDeleteCustomerContact(id);
 
   const saveCustomerMutation = useMutation({
     mutationFn: async (values: CreateCustomerInput | UpdateCustomerInput) => {
@@ -119,8 +120,34 @@ export function CustomerProfilePage() {
       ]);
 
       setCustomerDialog(null);
+      setFlashMessage('Customer saved successfully.');
     },
   });
+
+  useEffect(() => {
+    if (!flashMessage) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setFlashMessage(null);
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
+  }, [flashMessage]);
+
+  const closeAddressDialog = () => {
+    createAddressMutation.reset();
+    setAddressDialog(null);
+  };
+
+  const closeContactDialog = () => {
+    createContactMutation.reset();
+    setContactDialog(null);
+  };
+
+  const closeCustomerDialog = () => {
+    saveCustomerMutation.reset();
+    setCustomerDialog(null);
+  };
 
   const activeContent = useMemo(() => {
     if (activeTab === 'overview') {
@@ -148,17 +175,23 @@ export function CustomerProfilePage() {
       return (
         <CustomerAddressList
           addresses={addressesQuery.data ?? []}
-          onAdd={() => setAddressDialog({ mode: 'add', address: null })}
-          onEdit={(address) => setAddressDialog({ mode: 'edit', address })}
-          onDelete={(address) => {
-            if (
-              window.confirm(
-                `Delete address "${address.label || address.line1}"?`,
-              )
-            ) {
-              deleteAddressMutation.mutate(address.id);
-            }
-          }}
+          onAdd={() => setAddressDialog({ mode: 'create', address: null })}
+              onDelete={(address) => {
+                if (
+                  window.confirm(
+                    `Delete address "${address.label || address.line1}"?`,
+                  )
+                ) {
+                  deleteAddressMutation.mutate(address.id, {
+                    onSuccess: () => setFlashMessage('Address deleted successfully.'),
+                    onError: (error) => {
+                      setFlashMessage(
+                        error instanceof Error ? error.message : 'Failed to delete address.',
+                      );
+                    },
+                  });
+                }
+              }}
         />
       );
     }
@@ -176,7 +209,24 @@ export function CustomerProfilePage() {
       );
     }
 
-    return <CustomerContactList contacts={contactsQuery.data ?? []} />;
+    return (
+      <CustomerContactList
+        contacts={contactsQuery.data ?? []}
+        onAdd={() => setContactDialog({ mode: 'create', contact: null })}
+        onDelete={(contact) => {
+          if (window.confirm(`Delete contact "${contact.name}"?`)) {
+            deleteContactMutation.mutate(contact.id, {
+              onSuccess: () => setFlashMessage('Contact deleted successfully.'),
+              onError: (error) => {
+                setFlashMessage(
+                  error instanceof Error ? error.message : 'Failed to delete contact.',
+                );
+              },
+            });
+          }
+        }}
+      />
+    );
   }, [
     activeTab,
     addressesQuery.data,
@@ -187,6 +237,7 @@ export function CustomerProfilePage() {
     contactsQuery.isLoading,
     customerQuery.data,
     deleteAddressMutation,
+    deleteContactMutation,
   ]);
 
   if (!id) {
@@ -231,20 +282,10 @@ export function CustomerProfilePage() {
   }
 
   const initialAddressValues =
-    addressDialog?.mode === 'edit'
-      ? {
-          label: addressDialog.address.label ?? '',
-          line1: addressDialog.address.line1,
-          line2: addressDialog.address.line2 ?? '',
-          city: addressDialog.address.city,
-          state: addressDialog.address.state ?? '',
-          postalCode: addressDialog.address.postalCode,
-          country: addressDialog.address.country,
-          isBilling: addressDialog.address.isBilling,
-          isShipping: addressDialog.address.isShipping,
-          isDefault: addressDialog.address.isDefault,
-        }
-      : undefined;
+    addressDialog?.mode === 'edit' ? mapAddressToFormValues(addressDialog.address) : undefined;
+
+  const initialContactValues =
+    contactDialog?.mode === 'edit' ? mapContactToFormValues(contactDialog.contact) : undefined;
 
   return (
     <PageContainer>
@@ -261,6 +302,12 @@ export function CustomerProfilePage() {
           </button>
         }
       />
+
+      {flashMessage ? (
+        <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {flashMessage}
+        </div>
+      ) : null}
 
       <div className="mt-6 rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200">
@@ -295,14 +342,37 @@ export function CustomerProfilePage() {
             <AddressForm
               mode={addressDialog.mode}
               initialValues={initialAddressValues}
-              isSubmitting={saveAddressMutation.isPending}
-              error={saveAddressMutation.error instanceof Error ? saveAddressMutation.error.message : null}
-              onCancel={() => setAddressDialog(null)}
+              isSubmitting={createAddressMutation.isPending}
+              error={createAddressMutation.error instanceof Error ? createAddressMutation.error.message : null}
+              onCancel={closeAddressDialog}
               onSubmit={(values) => {
-                saveAddressMutation.mutate({
-                  mode: addressDialog.mode,
-                  addressId: addressDialog.address?.id,
-                  values,
+                createAddressMutation.mutate(mapAddressFormValuesToInput(values), {
+                  onSuccess: () => {
+                    closeAddressDialog();
+                    setFlashMessage('Address added successfully.');
+                  },
+                });
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {contactDialog ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+            <ContactForm
+              mode={contactDialog.mode}
+              initialValues={initialContactValues}
+              isSubmitting={createContactMutation.isPending}
+              error={createContactMutation.error instanceof Error ? createContactMutation.error.message : null}
+              onCancel={closeContactDialog}
+              onSubmit={(values) => {
+                createContactMutation.mutate(mapContactFormValuesToInput(values), {
+                  onSuccess: () => {
+                    closeContactDialog();
+                    setFlashMessage('Contact added successfully.');
+                  },
                 });
               }}
             />
@@ -324,7 +394,7 @@ export function CustomerProfilePage() {
               }}
               isSubmitting={saveCustomerMutation.isPending}
               error={saveCustomerMutation.error instanceof Error ? saveCustomerMutation.error.message : null}
-              onCancel={() => setCustomerDialog(null)}
+              onCancel={closeCustomerDialog}
               onSubmit={(values) => {
                 saveCustomerMutation.mutate(values);
               }}

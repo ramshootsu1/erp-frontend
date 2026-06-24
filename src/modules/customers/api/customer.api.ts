@@ -2,6 +2,7 @@ import { http } from '../../../api/http';
 import type {
   CustomerAddressInput,
   CreateCustomerInput,
+  CreateCustomerContactInput,
   Customer,
   CustomerAddress,
   CustomerContact,
@@ -65,6 +66,22 @@ export async function createCustomerAddress(
 
 export async function deleteCustomerAddress(addressId: string): Promise<void> {
   await http(`/customers/addresses/${addressId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function createCustomerContact(
+  customerId: string,
+  input: CreateCustomerContactInput,
+): Promise<CustomerContact> {
+  return http<CustomerContact>(`/customers/${customerId}/contacts`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteCustomerContact(contactId: string): Promise<void> {
+  await http(`/customers/contacts/${contactId}`, {
     method: 'DELETE',
   });
 }

@@ -67,3 +67,11 @@ export type CustomerAddressInput = {
   isShipping?: boolean;
   isDefault?: boolean;
 };
+
+export type CreateCustomerContactInput = {
+  name: string;
+  email?: string;
+  phone?: string;
+  designation?: string;
+  isPrimary?: boolean;
+};

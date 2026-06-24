@@ -1,11 +1,10 @@
-import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { TrashIcon } from '@heroicons/react/24/outline';
 import type { CustomerAddress } from '../types/customer.types';
 import { EmptyState, StatusBadge } from '../../../components/ui';
 
 type CustomerAddressListProps = {
   addresses: CustomerAddress[];
   onAdd: () => void;
-  onEdit: (address: CustomerAddress) => void;
   onDelete: (address: CustomerAddress) => void;
 };
 
@@ -22,10 +21,25 @@ function formatAddress(address: CustomerAddress) {
     .join(', ');
 }
 
+function getAddressTypeLabel(address: CustomerAddress) {
+  if (address.isBilling && address.isShipping) {
+    return 'Billing + Shipping';
+  }
+
+  if (address.isBilling) {
+    return 'Billing';
+  }
+
+  if (address.isShipping) {
+    return 'Shipping';
+  }
+
+  return 'General';
+}
+
 export function CustomerAddressList({
   addresses,
   onAdd,
-  onEdit,
   onDelete,
 }: CustomerAddressListProps) {
   return (
@@ -74,20 +88,13 @@ export function CustomerAddressList({
                   <div className="font-medium text-slate-900">
                     {address.label || 'Address'}
                   </div>
+                  <div className="mt-1">
+                    <StatusBadge variant="neutral">{getAddressTypeLabel(address)}</StatusBadge>
+                  </div>
                   <p className="mt-1 text-sm text-slate-600">{formatAddress(address)}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {address.isDefault ? <StatusBadge variant="info">Default</StatusBadge> : null}
-                  {address.isBilling ? <StatusBadge variant="neutral">Billing</StatusBadge> : null}
-                  {address.isShipping ? <StatusBadge variant="neutral">Shipping</StatusBadge> : null}
-                  <button
-                    type="button"
-                    onClick={() => onEdit(address)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                  >
-                    <PencilSquareIcon className="h-4 w-4" />
-                    Edit
-                  </button>
                   <button
                     type="button"
                     onClick={() => onDelete(address)}
